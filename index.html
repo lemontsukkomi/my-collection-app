@@ -457,6 +457,29 @@
       }
     }
 
+
+    /* 高速掃描器提示 */
+    .scanner-hint {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f3f3f3;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #555;
+      text-align: center;
+    }
+
+    .scanner-hint.active {
+      display: block;
+    }
+
+    #reader {
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
   </style>
 </head>
 
@@ -540,6 +563,14 @@
     </div>
 
     <div id="reader"></div>
+
+    <div
+      id="scannerHint"
+      class="scanner-hint"
+    >
+      對準條碼或 QR Code 中央，保持畫面清楚即可。<br>
+      支援 EAN / UPC / Code 128 / Code 39 / ITF / QR Code
+    </div>
 
     <div
       id="searchResult"
@@ -1598,70 +1629,335 @@ let imageBase64 = "";
 
 
   let scanner = null;
+  let scanResultLocked = false;
 
 
-  function startScanner() {
+  function playScanBeep() {
+
+    try {
+
+      const AudioContextClass =
+        window.AudioContext ||
+        window.webkitAudioContext;
+
+      if (!AudioContextClass) {
+        return;
+      }
+
+      const audioContext =
+        new AudioContextClass();
+
+      const oscillator =
+        audioContext.createOscillator();
+
+      const gain =
+        audioContext.createGain();
+
+      oscillator.type =
+        "sine";
+
+      oscillator.frequency.value =
+        880;
+
+      gain.gain.setValueAtTime(
+        0.08,
+        audioContext.currentTime
+      );
+
+      gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        audioContext.currentTime + 0.09
+      );
+
+      oscillator.connect(gain);
+      gain.connect(
+        audioContext.destination
+      );
+
+      oscillator.start();
+      oscillator.stop(
+        audioContext.currentTime + 0.09
+      );
+
+      oscillator.onended =
+        function() {
+          audioContext.close();
+        };
+
+    } catch (error) {
+
+      // 某些手機瀏覽器不允許自動播放聲音，忽略即可。
+      console.log(
+        "掃碼提示音無法播放",
+        error
+      );
+    }
+  }
+
+
+  function scanSuccessFeedback() {
+
+    // Android / 部分瀏覽器支援震動；iPhone Safari 可能忽略。
+    if (
+      navigator.vibrate
+    ) {
+      navigator.vibrate(
+        [70, 40, 70]
+      );
+    }
+
+    playScanBeep();
+  }
+
+
+  function getFastScannerFormats() {
+
+    const formats = [];
+
+    if (
+      typeof Html5QrcodeSupportedFormats ===
+      "undefined"
+    ) {
+      return formats;
+    }
+
+    const wanted = [
+      "QR_CODE",
+      "EAN_13",
+      "EAN_8",
+      "UPC_A",
+      "UPC_E",
+      "CODE_128",
+      "CODE_39",
+      "ITF"
+    ];
+
+    wanted.forEach(
+      function(name) {
+
+        if (
+          Html5QrcodeSupportedFormats[
+            name
+          ] !== undefined
+        ) {
+          formats.push(
+            Html5QrcodeSupportedFormats[
+              name
+            ]
+          );
+        }
+
+      }
+    );
+
+    return formats;
+  }
+
+
+  async function startScanner() {
 
     if (scanner) {
       return;
     }
 
-    scanner =
-      new Html5Qrcode("reader");
+    scanResultLocked =
+      false;
 
-    scanner.start(
+    const scanButton =
+      document.getElementById(
+        "scanButton"
+      );
 
-      {
-        facingMode:
-          "environment"
-      },
+    const hint =
+      document.getElementById(
+        "scannerHint"
+      );
 
-      {
-        fps: 10,
+    scanButton.disabled =
+      true;
 
-        qrbox: {
-          width: 300,
-          height: 120
-        }
-      },
+    scanButton.innerText =
+      "📷 相機啟動中...";
 
-      function(decodedText) {
+    hint.classList.add(
+      "active"
+    );
 
-        document
-          .getElementById("barcode")
-          .value =
-          decodedText;
 
-        scanner
-          .stop()
-          .then(function() {
+    const formats =
+      getFastScannerFormats();
 
-            scanner.clear();
-            scanner = null;
+    try {
 
-            searchBarcode(
-              decodedText
+      scanner =
+        formats.length > 0
+          ? new Html5Qrcode(
+              "reader",
+              {
+                formatsToSupport:
+                  formats
+              }
+            )
+          : new Html5Qrcode(
+              "reader"
             );
 
-          });
 
-      },
+      await scanner.start(
 
-      function(errorMessage) {
-        // 尚未辨識到條碼時不顯示
-      }
+        {
+          facingMode:
+            "environment"
+        },
 
-    ).catch(function(error) {
+        {
+          // 原本 10fps，提高到 20fps。
+          fps: 20,
+
+          // 寬一點的掃描區，比較適合商品一維條碼，
+          // 同時保留足夠高度讓 QR Code 也能辨識。
+          qrbox:
+            function(
+              viewfinderWidth,
+              viewfinderHeight
+            ) {
+
+              const width =
+                Math.max(
+                  240,
+                  Math.floor(
+                    viewfinderWidth *
+                    0.92
+                  )
+                );
+
+              const height =
+                Math.min(
+                  Math.floor(
+                    viewfinderHeight *
+                    0.62
+                  ),
+                  280
+                );
+
+              return {
+                width:
+                  Math.min(
+                    width,
+                    viewfinderWidth
+                  ),
+
+                height:
+                  Math.max(
+                    160,
+                    height
+                  )
+              };
+            },
+
+          aspectRatio:
+            1.777778,
+
+          disableFlip:
+            false
+        },
+
+        async function(
+          decodedText
+        ) {
+
+          // 防止同一個條碼在 stop() 前連續觸發多次。
+          if (
+            scanResultLocked
+          ) {
+            return;
+          }
+
+          scanResultLocked =
+            true;
+
+          document
+            .getElementById(
+              "barcode"
+            )
+            .value =
+            decodedText;
+
+          scanSuccessFeedback();
+
+          try {
+
+            if (scanner) {
+
+              await scanner.stop();
+
+              scanner.clear();
+
+              scanner = null;
+            }
+
+          } catch (error) {
+
+            console.log(
+              "停止掃描器時發生錯誤",
+              error
+            );
+
+            scanner = null;
+          }
+
+
+          hint.classList.remove(
+            "active"
+          );
+
+          scanButton.disabled =
+            false;
+
+          scanButton.innerText =
+            "📷 掃描條碼";
+
+          // 成功辨識後直接查資料庫。
+          searchBarcode(
+            decodedText
+          );
+
+        },
+
+        function(errorMessage) {
+          // 每幀未辨識成功是正常狀態，不顯示 alert。
+        }
+
+      );
+
+
+      scanButton.disabled =
+        false;
+
+      scanButton.innerText =
+        "📷 掃描中...";
+
+    } catch (error) {
+
+      console.error(error);
+
+      scanner = null;
+
+      scanButton.disabled =
+        false;
+
+      scanButton.innerText =
+        "📷 掃描條碼";
+
+      hint.classList.remove(
+        "active"
+      );
 
       alert(
         "無法開啟相機：" +
         error
       );
-
-      scanner = null;
-
-    });
-
+    }
   }
 
 
