@@ -242,56 +242,86 @@
   let scanner = null;
 
 
-  function startScanner() {
+function startScanner() {
 
-    if (scanner) {
-      return;
+  if (scanner) {
+    return;
+  }
+
+  scanner = new Html5Qrcode("reader");
+
+  scanner.start(
+
+    {
+      facingMode: "environment"
+    },
+
+    {
+      fps: 10,
+
+      qrbox: {
+        width: 300,
+        height: 120
+      }
+    },
+
+    function(decodedText) {
+
+      document.getElementById("barcode").value = decodedText;
+
+      scanner.stop().then(function() {
+
+        scanner.clear();
+        scanner = null;
+
+        searchBarcode(decodedText);
+
+      });
+
+    },
+
+    function(errorMessage) {
+
+      // 尚未掃描成功時不用顯示任何東西
+
     }
 
+  ).catch(function(error) {
 
-    scanner = new Html5Qrcode("reader");
+    alert(
+      "無法開啟相機：" + error
+    );
 
-
-    scanner.start(
-
-      {
-        facingMode: "environment"
-      },
-
-      {
-
-        fps: 10,
-
-        qrbox: {
-          width: 300,
-          height: 120
-        }
-
-      },
-
-
-      function(decodedText) {
-
-  document.getElementById("barcode").value = decodedText;
-
-  scanner.stop().then(function() {
-
-    scanner.clear();
     scanner = null;
-
-    searchBarcode(decodedText);
 
   });
 
-},
+}
+
+
+/*
+==========================================
+搜尋條碼
+==========================================
+*/
+
 async function searchBarcode(barcode) {
 
   const resultBox =
     document.getElementById("searchResult");
 
+  barcode = barcode.trim();
+
+  if (!barcode) {
+
+    resultBox.style.display = "block";
+    resultBox.innerHTML = "⚠️ 請先輸入或掃描條碼";
+
+    return;
+  }
+
   resultBox.style.display = "block";
   resultBox.innerHTML = "🔍 查詢中...";
-
 
   try {
 
@@ -300,14 +330,11 @@ async function searchBarcode(barcode) {
       "?barcode=" +
       encodeURIComponent(barcode);
 
-
     const response =
       await fetch(url);
 
-
     const data =
       await response.json();
-
 
     if (!data.success) {
 
@@ -315,9 +342,7 @@ async function searchBarcode(barcode) {
         "❌ 查詢失敗：" + data.error;
 
       return;
-
     }
-
 
     if (!data.found) {
 
@@ -328,12 +353,9 @@ async function searchBarcode(barcode) {
       `;
 
       return;
-
     }
 
-
     const item = data.item;
-
 
     resultBox.innerHTML = `
       <strong>✅ 已找到收藏</strong>
@@ -353,7 +375,6 @@ async function searchBarcode(barcode) {
       備註：${item.notes || "-"}
     `;
 
-
   } catch (error) {
 
     console.error(error);
@@ -364,27 +385,6 @@ async function searchBarcode(barcode) {
   }
 
 }
-
-      function(errorMessage) {
-
-        // 尚未掃描成功時不用顯示任何東西
-
-      }
-
-
-    ).catch(function(error) {
-
-      alert(
-        "無法開啟相機：" + error
-      );
-
-      scanner = null;
-
-    });
-
-  }
-
-
   /*
   ==========================================
   儲存資料
