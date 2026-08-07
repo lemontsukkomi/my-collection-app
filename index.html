@@ -13,6 +13,42 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
+    .collection-item {
+  background: #ffffff;
+  border: 1px solid #dddddd;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.collection-item img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #eeeeee;
+  flex-shrink: 0;
+}
+
+.collection-info {
+  flex: 1;
+}
+
+.collection-name {
+  font-size: 17px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.collection-meta {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+}
     body {
       font-family: Arial, sans-serif;
       max-width: 500px;
@@ -108,7 +144,34 @@
 <div class="card">
 
   <h1>📦 我的收藏</h1>
+<div id="collectionSection">
 
+  <div
+    id="collectionCount"
+    style="
+      text-align:center;
+      margin-bottom:12px;
+      color:#666;
+    "
+  >
+    載入中...
+  </div>
+
+  <input
+    id="textSearch"
+    type="text"
+    placeholder="搜尋名稱、分類、位置、備註..."
+    oninput="filterCollectionList()"
+  >
+
+  <div
+    id="collectionList"
+    style="margin-top:15px;"
+  ></div>
+
+</div>
+
+<hr style="margin:30px 0;">
   <label>主圖片</label>
 
   <input
@@ -720,7 +783,274 @@ if (item.imageUrl) {
 
   }
 
+let allItems = [];
 
+
+function loadCollectionList() {
+
+  const callbackName =
+    "listCallback_" +
+    Date.now();
+
+  window[callbackName] =
+    function(data) {
+
+      if (!data.success) {
+
+        document
+          .getElementById("collectionCount")
+          .innerText =
+          "❌ 無法載入收藏";
+
+        cleanup();
+
+        return;
+      }
+
+      allItems =
+        data.items || [];
+
+      renderCollectionList(
+        allItems
+      );
+
+      cleanup();
+
+    };
+
+
+  const script =
+    document.createElement("script");
+
+
+  script.src =
+    WEB_APP_URL +
+    "?action=list" +
+    "&callback=" +
+    encodeURIComponent(
+      callbackName
+    ) +
+    "&t=" +
+    Date.now();
+
+
+  script.onerror =
+    function() {
+
+      document
+        .getElementById("collectionCount")
+        .innerText =
+        "❌ 無法連線到收藏資料";
+
+      cleanup();
+
+    };
+
+
+  document.body.appendChild(
+    script
+  );
+
+
+  function cleanup() {
+
+    if (script.parentNode) {
+
+      script.parentNode
+        .removeChild(script);
+
+    }
+
+    delete window[
+      callbackName
+    ];
+
+  }
+
+}
+
+function renderCollectionList(items) {
+
+  const list =
+    document.getElementById(
+      "collectionList"
+    );
+
+  const count =
+    document.getElementById(
+      "collectionCount"
+    );
+
+
+  count.innerText =
+    "目前共有 " +
+    items.length +
+    " 件收藏";
+
+
+  if (items.length === 0) {
+
+    list.innerHTML =
+      "<div style='text-align:center;color:#888;'>沒有符合的收藏</div>";
+
+    return;
+
+  }
+
+
+  let html = "";
+
+
+  items.forEach(function(item) {
+
+    let imageSrc = "";
+
+    if (item.imageUrl) {
+
+      const idMatch =
+        item.imageUrl.match(
+          /(?:id=|\/d\/)([a-zA-Z0-9_-]+)/
+        );
+
+      if (idMatch) {
+
+        imageSrc =
+          "https://drive.google.com/thumbnail?id=" +
+          idMatch[1] +
+          "&sz=w500";
+
+      }
+
+    }
+
+
+    const imageHtml =
+      imageSrc
+        ? `
+          <img
+            src="${imageSrc}"
+            alt="收藏圖片"
+          >
+        `
+        : `
+          <div
+            style="
+              width:90px;
+              height:90px;
+              border-radius:10px;
+              background:#eeeeee;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              flex-shrink:0;
+              font-size:28px;
+            "
+          >
+            📦
+          </div>
+        `;
+
+
+    html += `
+
+      <div class="collection-item">
+
+        ${imageHtml}
+
+        <div class="collection-info">
+
+          <div class="collection-name">
+            ${item.name || "未命名"}
+          </div>
+
+          <div class="collection-meta">
+
+            ${item.category
+              ? "分類：" + item.category + "<br>"
+              : ""
+            }
+
+            ${item.location
+              ? "📍 " + item.location + "<br>"
+              : ""
+            }
+
+            數量：
+            ${item.quantity || 1}
+
+            ${item.price
+              ? "<br>💰 " + item.price
+              : ""
+            }
+
+          </div>
+
+        </div>
+
+      </div>
+
+    `;
+
+  });
+
+
+  list.innerHTML =
+    html;
+
+}
+
+function filterCollectionList() {
+
+  const keyword =
+    document
+      .getElementById(
+        "textSearch"
+      )
+      .value
+      .trim()
+      .toLowerCase();
+
+
+  if (!keyword) {
+
+    renderCollectionList(
+      allItems
+    );
+
+    return;
+
+  }
+
+
+  const filtered =
+    allItems.filter(
+      function(item) {
+
+        const text = [
+          item.name,
+          item.category,
+          item.location,
+          item.notes,
+          item.barcode
+        ]
+          .join(" ")
+          .toLowerCase();
+
+
+        return text.includes(
+          keyword
+        );
+
+      }
+    );
+
+
+  renderCollectionList(
+    filtered
+  );
+
+}
+  
   async function saveItem() {
 
     const name =
@@ -846,7 +1176,10 @@ if (item.imageUrl) {
       message.innerText =
         "✅ 資料已送出！";
 
+
       clearForm();
+loadCollectionList();
+      
 
     } catch (error) {
 
@@ -913,6 +1246,15 @@ if (item.imageUrl) {
 
   }
 
+window.addEventListener(
+  "load",
+  function() {
+
+    loadCollectionList();
+
+  }
+);
+  
 </script>
 
 </body>
