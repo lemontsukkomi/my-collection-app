@@ -210,6 +210,15 @@
       color: #999;
     }
 
+    .purchase-records { display:grid; gap:10px; margin-top:10px; }
+    .purchase-record { padding:12px; border:1px solid #e5e7eb; border-radius:10px; background:#fafafa; }
+    .purchase-record-grid { display:grid; grid-template-columns:1.2fr 1fr .8fr .8fr auto; gap:8px; align-items:end; }
+    .purchase-record-grid input, .purchase-record-grid select { margin:0; }
+    .purchase-record-note { margin-top:8px !important; }
+    .purchase-summary { padding:12px; border-radius:10px; background:#fff7ed; line-height:1.7; }
+    .purchase-remove { background:#fee2e2; color:#991b1b; padding:10px 12px; }
+    @media (max-width:700px) { .purchase-record-grid { grid-template-columns:1fr 1fr; } .purchase-remove { grid-column:1 / -1; } }
+
 
     /* 收藏頁：三欄圖片格狀顯示 */
     #collectionList {
@@ -727,7 +736,7 @@
       placeholder="例如：防潮箱第一層"
     >
 
-    <label>數量</label>
+    <label>本次購買數量</label>
 
     <input
       id="quantity"
@@ -736,7 +745,7 @@
       min="1"
     >
 
-    <label>購買日期</label>
+    <label>本次購買日期</label>
 
     <input
       id="purchaseDate"
@@ -746,7 +755,7 @@
     <div class="price-currency-row">
 
       <div>
-        <label>購入價格</label>
+        <label>單盒價格</label>
         <input
           id="price"
           type="number"
@@ -973,39 +982,12 @@
     <label>存放位置</label>
     <input id="editLocation" type="text">
 
-    <label>數量</label>
-    <input
-      id="editQuantity"
-      type="number"
-      min="1"
-      value="1"
-    >
-
-    <label>購買日期</label>
-    <input
-      id="editPurchaseDate"
-      type="date"
-    >
-
-    <div class="price-currency-row">
-
-      <div>
-        <label>購入價格</label>
-        <input
-          id="editPrice"
-          type="number"
-        >
-      </div>
-
-      <div>
-        <label>幣種</label>
-        <select
-          id="editCurrency"
-          class="currency-select"
-        ></select>
-      </div>
-
-    </div>
+    <label>購入紀錄</label>
+    <div class="image-section-note">每筆價格請填「單盒價格」，小計會依數量自動計算。</div>
+    <div id="editPurchaseRecords" class="purchase-records"></div>
+    <button type="button" class="currency-manage-button" onclick="addEditPurchaseRecord()">＋ 新增購入紀錄</button>
+    <div id="editPurchaseSummary" class="purchase-summary"></div>
+    <div style="display:none"><input id="editQuantity" value="1"><input id="editPurchaseDate"><input id="editPrice"><select id="editCurrency"><option value="TWD">TWD</option></select></div>
 
     <label>備註</label>
     <textarea
@@ -3146,6 +3128,39 @@ function formatDateValue(value) {
 }
 
 
+let editPurchaseRecordsData = [];
+
+function normalizedPurchaseRecords(item) {
+  if (Array.isArray(item.purchaseRecords) && item.purchaseRecords.length) {
+    return item.purchaseRecords.map(function(r) {
+      return {date:String(r.date||"").slice(0,10), price:r.price ?? "", currency:String(r.currency||"TWD").toUpperCase(), quantity:Math.max(1,Number(r.quantity)||1), note:String(r.note||"")};
+    });
+  }
+  return [{date:toDateInputValue(item.purchaseDate), price:item.price||"", currency:item.currency||"TWD", quantity:Math.max(1,Number(item.quantity)||1), note:""}];
+}
+function purchaseTotals(records) {
+  const totals={}; let quantity=0;
+  records.forEach(function(r){const count=Math.max(1,Number(r.quantity)||1);quantity+=count;if(r.price!==""&&r.price!=null&&!isNaN(Number(r.price))){const code=String(r.currency||"TWD").toUpperCase();totals[code]=(totals[code]||0)+Number(r.price)*count;}});
+  return {quantity,totals};
+}
+function formatMoney(value){return Number(value).toLocaleString("zh-TW",{maximumFractionDigits:2});}
+function purchaseDetailHtml(item){
+  const records=normalizedPurchaseRecords(item), summary=purchaseTotals(records);
+  const rows=records.map(function(r){const unit=r.price===""?"-":formatMoney(r.price)+" "+currencyLabel(r.currency);const subtotal=r.price===""?"-":formatMoney(Number(r.price)*Number(r.quantity||1))+" "+currencyLabel(r.currency);return `<div class="purchase-record"><strong>${escapeHtml(formatDateValue(r.date))}</strong>　${escapeHtml(r.quantity)} 盒 × ${escapeHtml(unit)}<br><span style="color:#666">小計：${escapeHtml(subtotal)}${r.note?" ・ "+escapeHtml(r.note):""}</span></div>`;}).join("");
+  const totalText=Object.keys(summary.totals).map(function(code){return formatMoney(summary.totals[code])+" "+currencyLabel(code);}).join(" ＋ ")||"-";
+  return `<div class="detail-row"><span class="detail-label">購入紀錄</span><div class="purchase-records">${rows}</div><div class="purchase-summary" style="margin-top:10px"><strong>總數量：${summary.quantity} 盒</strong><br>總成本：${escapeHtml(totalText)}</div></div>`;
+}
+function renderEditPurchaseRecords(){
+  const box=document.getElementById("editPurchaseRecords"); if(!box)return;
+  box.innerHTML=editPurchaseRecordsData.map(function(r,index){const options=getAllCurrencies().map(function(c){return `<option value="${escapeHtml(c.code)}" ${c.code===r.currency?"selected":""}>${escapeHtml(currencyLabel(c.code))}</option>`;}).join("");return `<div class="purchase-record"><div class="purchase-record-grid"><div><label>購買日期</label><input type="date" value="${escapeHtml(r.date)}" onchange="updateEditPurchaseRecord(${index},'date',this.value)"></div><div><label>單盒價格</label><input type="number" min="0" step="0.01" value="${escapeHtml(r.price)}" onchange="updateEditPurchaseRecord(${index},'price',this.value)"></div><div><label>幣種</label><select onchange="updateEditPurchaseRecord(${index},'currency',this.value)">${options}</select></div><div><label>數量</label><input type="number" min="1" value="${escapeHtml(r.quantity)}" onchange="updateEditPurchaseRecord(${index},'quantity',this.value)"></div><button type="button" class="purchase-remove" onclick="removeEditPurchaseRecord(${index})">刪除</button></div><input class="purchase-record-note" type="text" placeholder="通路或備註（可不填）" value="${escapeHtml(r.note)}" onchange="updateEditPurchaseRecord(${index},'note',this.value)"></div>`;}).join("");
+  const summary=purchaseTotals(editPurchaseRecordsData); const totalText=Object.keys(summary.totals).map(function(code){return formatMoney(summary.totals[code])+" "+currencyLabel(code);}).join(" ＋ ")||"-";
+  document.getElementById("editPurchaseSummary").innerHTML=`<strong>總數量：${summary.quantity} 盒</strong><br>總成本：${escapeHtml(totalText)}`;
+}
+function updateEditPurchaseRecord(index,field,value){if(!editPurchaseRecordsData[index])return;editPurchaseRecordsData[index][field]=field==="quantity"?Math.max(1,Number(value)||1):value;renderEditPurchaseRecords();}
+function addEditPurchaseRecord(){editPurchaseRecordsData.push({date:"",price:"",currency:"TWD",quantity:1,note:""});renderEditPurchaseRecords();}
+function removeEditPurchaseRecord(index){if(editPurchaseRecordsData.length===1){alert("至少保留一筆購入紀錄");return;}editPurchaseRecordsData.splice(index,1);renderEditPurchaseRecords();}
+
+
 function showItemDetail(itemIndex) {
 
   const item =
@@ -3296,32 +3311,7 @@ function showItemDetail(itemIndex) {
         ${valueOrDash(item.location)}
       </div>
 
-      <div class="detail-row">
-        <span class="detail-label">數量</span>
-        ${valueOrDash(item.quantity || 1)}
-      </div>
-
-      <div class="detail-row">
-        <span class="detail-label">購買日期</span>
-        ${escapeHtml(formatDateValue(item.purchaseDate))}
-      </div>
-
-      <div class="detail-row">
-        <span class="detail-label">購入價格</span>
-        ${
-          item.price
-            ? (
-                escapeHtml(item.price) +
-                " " +
-                escapeHtml(
-                  currencyLabel(
-                    item.currency || "TWD"
-                  )
-                )
-              )
-            : '<span class="detail-empty">-</span>'
-        }
-      </div>
+      ${purchaseDetailHtml(item)}
 
       <div class="detail-row">
         <span class="detail-label">備註</span>
@@ -3432,6 +3422,8 @@ function openEdit(itemIndex) {
     )
       ? item.imageUrls.slice()
       : [];
+
+  editPurchaseRecordsData = normalizedPurchaseRecords(item);
 
   document
     .getElementById("detailPage")
@@ -3588,6 +3580,8 @@ function openEdit(itemIndex) {
   editCurrency.value =
     itemCurrency;
 
+  renderEditPurchaseRecords();
+
   document.getElementById(
     "editNotes"
   ).value =
@@ -3729,6 +3723,9 @@ async function saveEdit() {
 
     id:
       item.id,
+
+    purchaseRecords:
+      editPurchaseRecordsData,
 
     name:
       name,
