@@ -244,40 +244,6 @@
 
 function startScanner() {
 
-  try {
-
-    alert("步驟1：按鈕正常");
-
-    if (typeof Html5Qrcode === "undefined") {
-      alert("❌ Html5Qrcode 沒有載入");
-      return;
-    }
-
-    alert("步驟2：掃描函式庫正常");
-
-    if (scanner) {
-      alert("⚠️ 掃描器已經存在");
-      return;
-    }
-
-    scanner = new Html5Qrcode("reader");
-
-    alert("步驟3：掃描器建立成功");
-
-    scanner.start(
-
-      {
-        facingMode: "environment"
-      },
-
-      {
-        fps: 10,
-
-        qrbox: {
-          width: 300,
-          height: 120
-        }
-      },
 
       function(decodedText) {
 
