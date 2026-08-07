@@ -795,12 +795,13 @@ function loadCollectionList() {
   window[callbackName] =
     function(data) {
 
-      if (!data.success) {
+     if (!data.success) {
 
-        document
-          .getElementById("collectionCount")
-          .innerText =
-          "❌ 無法載入收藏";
+  document
+    .getElementById("collectionCount")
+    .innerText =
+    "❌ 無法載入收藏：" +
+    (data.error || "未知錯誤");
 
         cleanup();
 
