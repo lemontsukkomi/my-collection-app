@@ -333,82 +333,189 @@ function startScanner() {
 ==========================================
 */
 
-async function searchBarcode(barcode) {
+function searchBarcode(barcode) {
 
   const resultBox =
     document.getElementById("searchResult");
 
-  barcode = barcode.trim();
+
+  barcode =
+    String(barcode || "").trim();
+
 
   if (!barcode) {
 
-    resultBox.style.display = "block";
-    resultBox.innerHTML = "⚠️ 請先輸入或掃描條碼";
-
-    return;
-  }
-
-  resultBox.style.display = "block";
-  resultBox.innerHTML = "🔍 查詢中...";
-
-  try {
-
-    const url =
-      WEB_APP_URL +
-      "?barcode=" +
-      encodeURIComponent(barcode);
-
-    const response =
-      await fetch(url);
-
-    const data =
-      await response.json();
-
-    if (!data.success) {
-
-      resultBox.innerHTML =
-        "❌ 查詢失敗：" + data.error;
-
-      return;
-    }
-
-    if (!data.found) {
-
-      resultBox.innerHTML = `
-        <strong>🆕 尚未建立這個商品</strong><br><br>
-        條碼：${barcode}<br>
-        可以直接在下面填寫資料新增收藏。
-      `;
-
-      return;
-    }
-
-    const item = data.item;
-
-    resultBox.innerHTML = `
-      <strong>✅ 已找到收藏</strong>
-
-      <hr>
-
-      <strong>${item.name || "未命名"}</strong><br><br>
-
-      分類：${item.category || "-"}<br>
-
-      📍 位置：${item.location || "-"}<br>
-
-      數量：${item.quantity || 1}<br>
-
-      💰 價格：${item.price || "-"}<br>
-
-      備註：${item.notes || "-"}
-    `;
-
-  } catch (error) {
-
-    console.error(error);
+    resultBox.style.display =
+      "block";
 
     resultBox.innerHTML =
-      "❌ 無法查詢資料";
+      "⚠️ 請先輸入或掃描條碼";
+
+    return;
+
+  }
+
+
+  resultBox.style.display =
+    "block";
+
+  resultBox.innerHTML =
+    "🔍 查詢中...";
+
+
+  /*
+  建立這一次搜尋專用的 callback 名稱
+  */
+
+  const callbackName =
+    "barcodeCallback_" +
+    Date.now();
+
+
+  /*
+  Google 回傳資料後會執行這個 function
+  */
+
+  window[callbackName] =
+    function(data) {
+
+
+      if (!data.success) {
+
+        resultBox.innerHTML =
+          "❌ 查詢失敗：" +
+          data.error;
+
+        cleanup();
+
+        return;
+
+      }
+
+
+      if (!data.found) {
+
+        resultBox.innerHTML = `
+          <strong>
+            🆕 尚未建立這個商品
+          </strong>
+
+          <br><br>
+
+          條碼：${barcode}
+
+          <br>
+
+          可以直接在下面填寫資料新增收藏。
+        `;
+
+        cleanup();
+
+        return;
+
+      }
+
+
+      const item =
+        data.item;
+
+
+      resultBox.innerHTML = `
+
+        <strong>
+          ✅ 已找到收藏
+        </strong>
+
+        <hr>
+
+        <strong>
+          ${item.name || "未命名"}
+        </strong>
+
+        <br><br>
+
+        分類：
+        ${item.category || "-"}
+
+        <br>
+
+        📍 位置：
+        ${item.location || "-"}
+
+        <br>
+
+        數量：
+        ${item.quantity || 1}
+
+        <br>
+
+        💰 價格：
+        ${item.price || "-"}
+
+        <br>
+
+        備註：
+        ${item.notes || "-"}
+
+      `;
+
+
+      cleanup();
+
+    };
+
+
+  /*
+  建立 script，
+  讓瀏覽器用 JSONP 方式向 Google 查詢
+  */
+
+  const script =
+    document.createElement("script");
+
+
+  script.src =
+
+    WEB_APP_URL +
+
+    "?barcode=" +
+    encodeURIComponent(barcode) +
+
+    "&callback=" +
+    encodeURIComponent(callbackName) +
+
+    "&t=" +
+    Date.now();
+
+
+  script.onerror =
+    function() {
+
+      resultBox.innerHTML =
+        "❌ 無法連線到資料庫";
+
+      cleanup();
+
+    };
+
+
+  document.body.appendChild(script);
+
+
+  /*
+  搜尋完成後清理暫時產生的東西
+  */
+
+  function cleanup() {
+
+    if (script.parentNode) {
+
+      script.parentNode
+        .removeChild(script);
+
+    }
+
+    delete window[callbackName];
 
   }
 
