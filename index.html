@@ -136,6 +136,32 @@
       border-radius: 10px;
       margin-bottom: 12px;
     }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .tab-button {
+      flex: 1;
+      margin-top: 0;
+      background: #eeeeee;
+      font-weight: bold;
+    }
+
+    .tab-button.active {
+      background: #dcdcdc;
+    }
+
+    .tab-page {
+      display: none;
+    }
+
+    .tab-page.active {
+      display: block;
+    }
+
   </style>
 </head>
 
@@ -144,153 +170,188 @@
 <div class="card">
 
   <h1>📦 我的收藏</h1>
-<div id="collectionSection">
 
-  <div
-    id="collectionCount"
-    style="
-      text-align:center;
-      margin-bottom:12px;
-      color:#666;
-    "
-  >
-    載入中...
+  <div class="tabs">
+    <button
+      id="addTabButton"
+      class="tab-button active"
+      type="button"
+      onclick="showTab('add')"
+    >
+      ➕ 新增物品
+    </button>
+
+    <button
+      id="collectionTabButton"
+      class="tab-button"
+      type="button"
+      onclick="showTab('collection')"
+    >
+      📚 我的收藏
+    </button>
   </div>
 
-  <input
-    id="textSearch"
-    type="text"
-    placeholder="搜尋名稱、分類、位置、備註..."
-    oninput="filterCollectionList()"
-  >
-
+  <!-- =========================
+       新增物品頁（預設首頁）
+  ========================== -->
   <div
-    id="collectionList"
-    style="margin-top:15px;"
-  ></div>
-
-</div>
-
-<hr style="margin:30px 0;">
-  <label>主圖片</label>
-
-  <input
-    id="imageInput"
-    type="file"
-    accept="image/*"
-    onchange="handleImageSelect(this)"
+    id="addPage"
+    class="tab-page active"
   >
 
-  <img
-    id="imagePreview"
-    alt="圖片預覽"
-  >
+    <label>主圖片</label>
 
-  <div id="imageInfo"></div>
+    <input
+      id="imageInput"
+      type="file"
+      accept="image/*"
+      onchange="handleImageSelect(this)"
+    >
 
-  <label>條碼</label>
+    <img
+      id="imagePreview"
+      alt="圖片預覽"
+    >
 
-  <input
-    id="barcode"
-    type="text"
-    placeholder="掃描或手動輸入條碼"
-  >
+    <div id="imageInfo"></div>
 
-  <button
-    type="button"
-    onclick="searchBarcode(
-      document.getElementById('barcode').value
-    )"
-  >
-    🔍 搜尋條碼
-  </button>
+    <label>條碼</label>
 
-  <button
-    id="scanButton"
-    type="button"
-    onclick="startScanner()"
-  >
-    📷 掃描條碼
-  </button>
+    <input
+      id="barcode"
+      type="text"
+      placeholder="掃描或手動輸入條碼"
+    >
 
-  <div id="reader"></div>
+    <button
+      type="button"
+      onclick="searchBarcode(
+        document.getElementById('barcode').value
+      )"
+    >
+      🔍 搜尋條碼
+    </button>
 
+    <button
+      id="scanButton"
+      type="button"
+      onclick="startScanner()"
+    >
+      📷 掃描條碼
+    </button>
+
+    <div id="reader"></div>
+
+    <div
+      id="searchResult"
+      style="
+        margin-top:15px;
+        padding:15px;
+        border-radius:10px;
+        display:none;
+      "
+    ></div>
+
+    <label>收藏名稱 *</label>
+
+    <input
+      id="name"
+      type="text"
+      placeholder="例如：寶可夢卡盒"
+    >
+
+    <label>分類</label>
+
+    <input
+      id="category"
+      type="text"
+      placeholder="例如：寶可夢"
+    >
+
+    <label>存放位置</label>
+
+    <input
+      id="location"
+      type="text"
+      placeholder="例如：防潮箱第一層"
+    >
+
+    <label>數量</label>
+
+    <input
+      id="quantity"
+      type="number"
+      value="1"
+      min="1"
+    >
+
+    <label>購買日期</label>
+
+    <input
+      id="purchaseDate"
+      type="date"
+    >
+
+    <label>購入價格</label>
+
+    <input
+      id="price"
+      type="number"
+      placeholder="例如：500"
+    >
+
+    <label>備註</label>
+
+    <textarea
+      id="notes"
+      rows="4"
+      placeholder="其他想記錄的內容"
+    ></textarea>
+
+    <button
+      id="saveButton"
+      type="button"
+      onclick="saveItem()"
+    >
+      💾 儲存收藏
+    </button>
+
+    <div id="message"></div>
+
+  </div>
+
+  <!-- =========================
+       我的收藏頁
+  ========================== -->
   <div
-    id="searchResult"
-    style="
-      margin-top:15px;
-      padding:15px;
-      border-radius:10px;
-      display:none;
-    "
-  ></div>
-
-  <label>收藏名稱 *</label>
-
-  <input
-    id="name"
-    type="text"
-    placeholder="例如：寶可夢卡盒"
+    id="collectionPage"
+    class="tab-page"
   >
 
-  <label>分類</label>
+    <div
+      id="collectionCount"
+      style="
+        text-align:center;
+        margin-bottom:12px;
+        color:#666;
+      "
+    >
+      尚未載入收藏
+    </div>
 
-  <input
-    id="category"
-    type="text"
-    placeholder="例如：寶可夢"
-  >
+    <input
+      id="textSearch"
+      type="text"
+      placeholder="搜尋名稱、分類、位置、備註..."
+      oninput="filterCollectionList()"
+    >
 
-  <label>存放位置</label>
+    <div
+      id="collectionList"
+      style="margin-top:15px;"
+    ></div>
 
-  <input
-    id="location"
-    type="text"
-    placeholder="例如：防潮箱第一層"
-  >
-
-  <label>數量</label>
-
-  <input
-    id="quantity"
-    type="number"
-    value="1"
-    min="1"
-  >
-
-  <label>購買日期</label>
-
-  <input
-    id="purchaseDate"
-    type="date"
-  >
-
-  <label>購入價格</label>
-
-  <input
-    id="price"
-    type="number"
-    placeholder="例如：500"
-  >
-
-  <label>備註</label>
-
-  <textarea
-    id="notes"
-    rows="4"
-    placeholder="其他想記錄的內容"
-  ></textarea>
-
-  <button
-    id="saveButton"
-    type="button"
-    onclick="saveItem()"
-  >
-    💾 儲存收藏
-  </button>
-
-  <div id="message"></div>
-
+  </div>
 </div>
 
 
@@ -300,7 +361,55 @@
     "https://script.google.com/macros/s/AKfycbwygzQlNKxnAddoB3l387NsQnxdoFse6BEHYDf0w8_kPOyJ3KJiPA4oIbPb0F9KXnCE/exec";
 
 
-  let imageBase64 = "";
+  
+
+  let collectionLoaded = false;
+
+
+  function showTab(tabName) {
+
+    const addPage =
+      document.getElementById("addPage");
+
+    const collectionPage =
+      document.getElementById("collectionPage");
+
+    const addButton =
+      document.getElementById("addTabButton");
+
+    const collectionButton =
+      document.getElementById("collectionTabButton");
+
+
+    if (tabName === "collection") {
+
+      addPage.classList.remove("active");
+      collectionPage.classList.add("active");
+
+      addButton.classList.remove("active");
+      collectionButton.classList.add("active");
+
+      // 第一次打開收藏頁時才載入全部收藏
+      if (!collectionLoaded) {
+
+        loadCollectionList();
+
+        collectionLoaded = true;
+
+      }
+
+    } else {
+
+      collectionPage.classList.remove("active");
+      addPage.classList.add("active");
+
+      collectionButton.classList.remove("active");
+      addButton.classList.add("active");
+
+    }
+
+  }
+let imageBase64 = "";
   let imageMimeType = "";
   let imageName = "";
 
@@ -1179,7 +1288,10 @@ function filterCollectionList() {
 
 
       clearForm();
-loadCollectionList();
+
+      if (collectionLoaded) {
+        loadCollectionList();
+      }
       
 
     } catch (error) {
@@ -1247,15 +1359,6 @@ loadCollectionList();
 
   }
 
-window.addEventListener(
-  "load",
-  function() {
-
-    loadCollectionList();
-
-  }
-);
-  
 </script>
 
 </body>
