@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>我的收藏 App</title>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      margin-top: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 18px;
+      box-sizing: border-box;
+    }
+
+    #reader {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>📦 我的收藏</h1>
+
+  <label>條碼</label>
+  <input id="barcode" type="text" placeholder="掃描後會自動填入">
+
+  <button onclick="startScanner()">
+    📷 掃描條碼
+  </button>
+
+  <div id="reader"></div>
+
+  <script>
+
+    let scanner = null;
+
+    function startScanner() {
+
+      if (scanner) {
+        return;
+      }
+
+      scanner = new Html5Qrcode("reader");
+
+      scanner.start(
+        {
+          facingMode: "environment"
+        },
+        {
+          fps: 10,
+          qrbox: {
+            width: 280,
+            height: 160
+          }
+        },
+
+        function(decodedText) {
+
+          document.getElementById("barcode").value = decodedText;
+
+          scanner.stop().then(function() {
+            scanner.clear();
+            scanner = null;
+          });
+
+        },
+
+        function(errorMessage) {
+          // 尚未掃到時不顯示錯誤
+        }
+
+      ).catch(function(error) {
+
+        alert("無法開啟相機：" + error);
+
+        scanner = null;
+
+      });
+    }
+
+  </script>
+
+</body>
+</html>
