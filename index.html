@@ -361,6 +361,102 @@
       margin-top: 0;
     }
 
+
+    /* 金額 + 幣種並排 */
+    .price-currency-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(120px, 1fr);
+      gap: 10px;
+      align-items: end;
+    }
+
+    .price-currency-row > div {
+      min-width: 0;
+    }
+
+    .price-currency-row input,
+    .price-currency-row select {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .currency-select {
+      padding: 12px;
+      margin-top: 6px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+    }
+
+    .currency-manage-button {
+      margin-top: 8px;
+      padding: 9px 10px;
+      font-size: 14px;
+      background: #eeeeee;
+    }
+
+    .currency-manager {
+      display: none;
+      margin-top: 12px;
+      padding: 14px;
+      border: 1px solid #dddddd;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+
+    .currency-manager.active {
+      display: block;
+    }
+
+    .currency-manager-row {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 8px;
+    }
+
+    .currency-manager-row input {
+      margin-top: 0;
+    }
+
+    .currency-manager-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .currency-manager-actions button {
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 15px;
+    }
+
+    .custom-currency-list {
+      margin-top: 12px;
+    }
+
+    .custom-currency-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid #eeeeee;
+    }
+
+    .custom-currency-item button {
+      width: auto;
+      margin-top: 0;
+      padding: 7px 10px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 380px) {
+      .price-currency-row {
+        grid-template-columns: minmax(0, 1.45fr) minmax(105px, 1fr);
+        gap: 8px;
+      }
+    }
+
   </style>
 </head>
 
@@ -495,13 +591,83 @@
       type="date"
     >
 
-    <label>購入價格</label>
+    <div class="price-currency-row">
 
-    <input
-      id="price"
-      type="number"
-      placeholder="例如：500"
+      <div>
+        <label>購入價格</label>
+        <input
+          id="price"
+          type="number"
+          placeholder="例如：500"
+        >
+      </div>
+
+      <div>
+        <label>幣種</label>
+        <select
+          id="currency"
+          class="currency-select"
+        ></select>
+      </div>
+
+    </div>
+
+    <button
+      type="button"
+      class="currency-manage-button"
+      onclick="toggleCurrencyManager()"
     >
+      ⚙️ 管理幣種
+    </button>
+
+    <div
+      id="currencyManager"
+      class="currency-manager"
+    >
+      <strong>自訂幣種</strong>
+
+      <div
+        class="currency-manager-row"
+        style="margin-top:10px;"
+      >
+        <input
+          id="newCurrencyCode"
+          type="text"
+          maxlength="8"
+          placeholder="代碼，如 KRW"
+        >
+
+        <input
+          id="newCurrencyName"
+          type="text"
+          maxlength="20"
+          placeholder="名稱，如 韓元"
+        >
+      </div>
+
+      <div class="currency-manager-actions">
+
+        <button
+          type="button"
+          onclick="addCustomCurrency()"
+        >
+          ＋ 新增幣種
+        </button>
+
+        <button
+          type="button"
+          onclick="toggleCurrencyManager(false)"
+        >
+          關閉
+        </button>
+
+      </div>
+
+      <div
+        id="customCurrencyList"
+        class="custom-currency-list"
+      ></div>
+    </div>
 
     <label>備註</label>
 
@@ -635,11 +801,25 @@
       type="date"
     >
 
-    <label>購入價格</label>
-    <input
-      id="editPrice"
-      type="number"
-    >
+    <div class="price-currency-row">
+
+      <div>
+        <label>購入價格</label>
+        <input
+          id="editPrice"
+          type="number"
+        >
+      </div>
+
+      <div>
+        <label>幣種</label>
+        <select
+          id="editCurrency"
+          class="currency-select"
+        ></select>
+      </div>
+
+    </div>
 
     <label>備註</label>
     <textarea
@@ -676,6 +856,473 @@
   
 
   let collectionLoaded = false;
+
+
+  const BUILTIN_CURRENCIES = [
+    { code: "TWD", name: "台幣" },
+    { code: "JPY", name: "日幣" },
+    { code: "USD", name: "美金" }
+  ];
+
+  const CUSTOM_CURRENCY_KEY =
+    "myCollectionCustomCurrencies";
+
+
+  function getCustomCurrencies() {
+
+    try {
+
+      const raw =
+        localStorage.getItem(
+          CUSTOM_CURRENCY_KEY
+        );
+
+      const parsed =
+        raw
+          ? JSON.parse(raw)
+          : [];
+
+      return Array.isArray(parsed)
+        ? parsed
+        : [];
+
+    } catch (error) {
+
+      console.error(error);
+
+      return [];
+    }
+  }
+
+
+  function saveCustomCurrencies(list) {
+
+    localStorage.setItem(
+      CUSTOM_CURRENCY_KEY,
+      JSON.stringify(list)
+    );
+  }
+
+
+  function getAllCurrencies() {
+
+    const seen =
+      new Set();
+
+    return BUILTIN_CURRENCIES
+      .concat(
+        getCustomCurrencies()
+      )
+      .filter(function(item) {
+
+        const code =
+          String(item.code || "")
+            .trim()
+            .toUpperCase();
+
+        if (
+          !code ||
+          seen.has(code)
+        ) {
+          return false;
+        }
+
+        seen.add(code);
+
+        return true;
+      })
+      .map(function(item) {
+
+        return {
+          code:
+            String(item.code || "")
+              .trim()
+              .toUpperCase(),
+
+          name:
+            String(item.name || "")
+              .trim()
+        };
+      });
+  }
+
+
+  function currencyLabel(code) {
+
+    const normalized =
+      String(code || "TWD")
+        .trim()
+        .toUpperCase() ||
+      "TWD";
+
+    const found =
+      getAllCurrencies()
+        .find(function(item) {
+          return (
+            item.code ===
+            normalized
+          );
+        });
+
+    return found
+      ? (
+          found.code +
+          (found.name
+            ? " " + found.name
+            : "")
+        )
+      : normalized;
+  }
+
+
+  function populateCurrencySelects() {
+
+    const selects = [
+      document.getElementById(
+        "currency"
+      ),
+      document.getElementById(
+        "editCurrency"
+      )
+    ].filter(Boolean);
+
+    const currencies =
+      getAllCurrencies();
+
+    selects.forEach(function(select) {
+
+      const current =
+        String(
+          select.value ||
+          "TWD"
+        )
+          .trim()
+          .toUpperCase();
+
+      select.innerHTML = "";
+
+      currencies.forEach(
+        function(item) {
+
+          const option =
+            document.createElement(
+              "option"
+            );
+
+          option.value =
+            item.code;
+
+          option.textContent =
+            item.code +
+            (item.name
+              ? " " + item.name
+              : "");
+
+          select.appendChild(
+            option
+          );
+        }
+      );
+
+      const exists =
+        currencies.some(
+          function(item) {
+            return (
+              item.code ===
+              current
+            );
+          }
+        );
+
+      select.value =
+        exists
+          ? current
+          : "TWD";
+    });
+
+    renderCustomCurrencyList();
+  }
+
+
+  function toggleCurrencyManager(forceState) {
+
+    const manager =
+      document.getElementById(
+        "currencyManager"
+      );
+
+    if (!manager) {
+      return;
+    }
+
+    const shouldOpen =
+      typeof forceState ===
+      "boolean"
+        ? forceState
+        : !manager.classList
+            .contains("active");
+
+    manager.classList.toggle(
+      "active",
+      shouldOpen
+    );
+
+    if (shouldOpen) {
+      renderCustomCurrencyList();
+    }
+  }
+
+
+  function addCustomCurrency() {
+
+    const codeInput =
+      document.getElementById(
+        "newCurrencyCode"
+      );
+
+    const nameInput =
+      document.getElementById(
+        "newCurrencyName"
+      );
+
+    const code =
+      String(
+        codeInput.value || ""
+      )
+        .trim()
+        .toUpperCase();
+
+    const name =
+      String(
+        nameInput.value || ""
+      ).trim();
+
+
+    if (!code) {
+      alert("請輸入幣種代碼");
+      return;
+    }
+
+    if (
+      !/^[A-Z0-9_-]{2,8}$/
+        .test(code)
+    ) {
+      alert(
+        "幣種代碼請使用 2～8 位英文字母、數字、_ 或 -"
+      );
+      return;
+    }
+
+
+    const all =
+      getAllCurrencies();
+
+    if (
+      all.some(
+        function(item) {
+          return item.code === code;
+        }
+      )
+    ) {
+      alert(
+        code +
+        " 已經存在"
+      );
+      return;
+    }
+
+
+    const custom =
+      getCustomCurrencies();
+
+    custom.push({
+      code: code,
+      name: name
+    });
+
+    saveCustomCurrencies(
+      custom
+    );
+
+    codeInput.value = "";
+    nameInput.value = "";
+
+    populateCurrencySelects();
+
+    const addSelect =
+      document.getElementById(
+        "currency"
+      );
+
+    if (addSelect) {
+      addSelect.value = code;
+    }
+  }
+
+
+  function deleteCustomCurrency(code) {
+
+    const normalized =
+      String(code || "")
+        .trim()
+        .toUpperCase();
+
+    if (
+      BUILTIN_CURRENCIES
+        .some(function(item) {
+          return (
+            item.code ===
+            normalized
+          );
+        })
+    ) {
+      alert(
+        "系統內建幣種不能刪除"
+      );
+      return;
+    }
+
+
+    const confirmed =
+      confirm(
+        "確定從選單刪除 " +
+        normalized +
+        " 嗎？\n\n已經使用這個幣種的收藏仍會保留原代碼。"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    const custom =
+      getCustomCurrencies()
+        .filter(function(item) {
+          return (
+            String(
+              item.code || ""
+            )
+              .trim()
+              .toUpperCase() !==
+            normalized
+          );
+        });
+
+    saveCustomCurrencies(
+      custom
+    );
+
+    populateCurrencySelects();
+  }
+
+
+  function renderCustomCurrencyList() {
+
+    const box =
+      document.getElementById(
+        "customCurrencyList"
+      );
+
+    if (!box) {
+      return;
+    }
+
+    box.innerHTML = "";
+
+    const custom =
+      getCustomCurrencies();
+
+    if (
+      custom.length === 0
+    ) {
+
+      const empty =
+        document.createElement(
+          "div"
+        );
+
+      empty.style.color =
+        "#888";
+
+      empty.style.fontSize =
+        "14px";
+
+      empty.textContent =
+        "目前沒有自訂幣種";
+
+      box.appendChild(
+        empty
+      );
+
+      return;
+    }
+
+
+    custom.forEach(
+      function(item) {
+
+        const code =
+          String(item.code || "")
+            .trim()
+            .toUpperCase();
+
+        const name =
+          String(item.name || "")
+            .trim();
+
+        const row =
+          document.createElement(
+            "div"
+          );
+
+        row.className =
+          "custom-currency-item";
+
+        const label =
+          document.createElement(
+            "span"
+          );
+
+        label.textContent =
+          code +
+          (name
+            ? " " + name
+            : "");
+
+        const button =
+          document.createElement(
+            "button"
+          );
+
+        button.type =
+          "button";
+
+        button.textContent =
+          "🗑️ 刪除";
+
+        button.onclick =
+          function() {
+            deleteCustomCurrency(
+              code
+            );
+          };
+
+        row.appendChild(
+          label
+        );
+
+        row.appendChild(
+          button
+        );
+
+        box.appendChild(
+          row
+        );
+      }
+    );
+  }
+
+
 
 
   function showTab(tabName) {
@@ -1156,7 +1803,19 @@ if (item.imageUrl) {
           <br>
 
           💰 價格：
-          ${item.price || "-"}
+          ${
+            item.price
+              ? (
+                  escapeHtml(item.price) +
+                  " " +
+                  escapeHtml(
+                    currencyLabel(
+                      item.currency || "TWD"
+                    )
+                  )
+                )
+              : "-"
+          }
 
           <br>
 
@@ -1469,7 +2128,19 @@ function showItemDetail(itemIndex) {
 
       <div class="detail-row">
         <span class="detail-label">購入價格</span>
-        ${valueOrDash(item.price)}
+        ${
+          item.price
+            ? (
+                escapeHtml(item.price) +
+                " " +
+                escapeHtml(
+                  currencyLabel(
+                    item.currency || "TWD"
+                  )
+                )
+              )
+            : '<span class="detail-empty">-</span>'
+        }
       </div>
 
       <div class="detail-row">
@@ -1666,6 +2337,52 @@ function openEdit(itemIndex) {
   ).value =
     item.price || "";
 
+  populateCurrencySelects();
+
+  const editCurrency =
+    document.getElementById(
+      "editCurrency"
+    );
+
+  const itemCurrency =
+    String(
+      item.currency || "TWD"
+    )
+      .trim()
+      .toUpperCase() ||
+    "TWD";
+
+  if (
+    !Array.from(
+      editCurrency.options
+    )
+      .some(function(option) {
+        return (
+          option.value ===
+          itemCurrency
+        );
+      })
+  ) {
+
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value =
+      itemCurrency;
+
+    option.textContent =
+      itemCurrency;
+
+    editCurrency.appendChild(
+      option
+    );
+  }
+
+  editCurrency.value =
+    itemCurrency;
+
   document.getElementById(
     "editNotes"
   ).value =
@@ -1838,6 +2555,11 @@ async function saveEdit() {
         .getElementById("editPrice")
         .value,
 
+    currency:
+      document
+        .getElementById("editCurrency")
+        .value || "TWD",
+
     notes:
       document
         .getElementById("editNotes")
@@ -1953,9 +2675,9 @@ function reloadCollectionAfterEdit(itemId) {
             allItems =
               data.items;
 
-            renderCollectionList(
-              allItems
-            );
+            updateCategoryFilter();
+
+            filterCollectionList();
 
             const newIndex =
               allItems.findIndex(
@@ -2534,6 +3256,14 @@ function filterCollectionList() {
           )
           .value,
 
+      currency:
+        document
+          .getElementById(
+            "currency"
+          )
+          .value ||
+        "TWD",
+
       notes:
         document
           .getElementById(
@@ -2658,6 +3388,16 @@ function filterCollectionList() {
       "price"
     ).value = "";
 
+    const currencySelect =
+      document.getElementById(
+        "currency"
+      );
+
+    if (currencySelect) {
+      currencySelect.value =
+        "TWD";
+    }
+
     document.getElementById(
       "notes"
     ).value = "";
@@ -2674,6 +3414,26 @@ function filterCollectionList() {
       "";
 
   }
+
+
+  window.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+      populateCurrencySelects();
+
+      const addCurrency =
+        document.getElementById(
+          "currency"
+        );
+
+      if (addCurrency) {
+        addCurrency.value =
+          "TWD";
+      }
+    }
+  );
+
 
 </script>
 
