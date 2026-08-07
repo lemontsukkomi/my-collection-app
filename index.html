@@ -210,6 +210,57 @@
       color: #999;
     }
 
+
+    /* 收藏頁：三欄圖片格狀顯示 */
+    #collectionList {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    #collectionList .collection-item {
+      display: block;
+      padding: 0;
+      margin: 0;
+      border: none;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #eeeeee;
+      box-shadow: none;
+      aspect-ratio: 1 / 1;
+      position: relative;
+    }
+
+    #collectionList .collection-item img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      border-radius: 0;
+      background: #eeeeee;
+    }
+
+    #collectionList .collection-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      background: #eeeeee;
+    }
+
+    #collectionList .collection-info {
+      display: none;
+    }
+
+    #collectionList .empty-list-message {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: #888;
+      padding: 20px 0;
+    }
+
   </style>
 </head>
 
@@ -1283,7 +1334,7 @@ function renderCollectionList(items) {
   if (items.length === 0) {
 
     list.innerHTML =
-      "<div style='text-align:center;color:#888;'>沒有符合的收藏</div>";
+      '<div class="empty-list-message">沒有符合的收藏</div>';
 
     return;
   }
@@ -1310,19 +1361,7 @@ function renderCollectionList(items) {
           >
         `
         : `
-          <div
-            style="
-              width:90px;
-              height:90px;
-              border-radius:10px;
-              background:#eeeeee;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              flex-shrink:0;
-              font-size:28px;
-            "
-          >
+          <div class="collection-placeholder">
             📦
           </div>
         `;
