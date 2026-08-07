@@ -320,18 +320,12 @@
 
     /* iPhone 日期欄避免超出卡片 */
     input[type="date"] {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-
-  -webkit-appearance: none;
-  appearance: none;
-
-  height: 46px;
-  padding: 10px 12px;
-}
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
 
     /* 分類篩選 */
     .collection-filter-row {
@@ -2063,6 +2057,7 @@ if (item.imageUrl) {
     <img
       src="${imageSrc}"
       alt="收藏圖片"
+      decoding="async"
       style="
         width:100%;
         max-height:240px;
@@ -2178,42 +2173,252 @@ if (item.imageUrl) {
 let allItems = [];
 
 
+const COLLECTION_CACHE_KEY =
+  "myCollectionItemsCache_v2";
+
+const COLLECTION_CACHE_TIME_KEY =
+  "myCollectionItemsCacheTime_v2";
+
+
+function readCollectionCache() {
+
+  try {
+
+    const raw =
+      localStorage.getItem(
+        COLLECTION_CACHE_KEY
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    const items =
+      JSON.parse(raw);
+
+    return Array.isArray(items)
+      ? items
+      : null;
+
+  } catch (error) {
+
+    console.warn(
+      "收藏快取讀取失敗",
+      error
+    );
+
+    return null;
+  }
+}
+
+
+function writeCollectionCache(items) {
+
+  try {
+
+    localStorage.setItem(
+      COLLECTION_CACHE_KEY,
+      JSON.stringify(items)
+    );
+
+    localStorage.setItem(
+      COLLECTION_CACHE_TIME_KEY,
+      String(Date.now())
+    );
+
+  } catch (error) {
+
+    // localStorage 空間不足時，不影響 App 正常使用。
+    console.warn(
+      "收藏快取寫入失敗",
+      error
+    );
+  }
+}
+
+
+function clearCollectionCache() {
+
+  try {
+
+    localStorage.removeItem(
+      COLLECTION_CACHE_KEY
+    );
+
+    localStorage.removeItem(
+      COLLECTION_CACHE_TIME_KEY
+    );
+
+  } catch (error) {
+
+    console.warn(
+      "收藏快取清除失敗",
+      error
+    );
+  }
+}
+
+
+function getCollectionCacheAgeText() {
+
+  const timestamp =
+    Number(
+      localStorage.getItem(
+        COLLECTION_CACHE_TIME_KEY
+      ) || 0
+    );
+
+  if (!timestamp) {
+    return "";
+  }
+
+  const seconds =
+    Math.max(
+      0,
+      Math.floor(
+        (Date.now() - timestamp) /
+        1000
+      )
+    );
+
+  if (seconds < 60) {
+    return "剛剛";
+  }
+
+  const minutes =
+    Math.floor(
+      seconds / 60
+    );
+
+  if (minutes < 60) {
+    return minutes + " 分鐘前";
+  }
+
+  const hours =
+    Math.floor(
+      minutes / 60
+    );
+
+  return hours + " 小時前";
+}
+
+
+
+
 function loadCollectionList() {
+
+  const count =
+    document.getElementById(
+      "collectionCount"
+    );
+
+  /*
+    先立刻顯示上次的本機快取。
+    Google Sheet 則在背景更新。
+  */
+  const cachedItems =
+    readCollectionCache();
+
+  if (
+    cachedItems &&
+    cachedItems.length >= 0
+  ) {
+
+    allItems =
+      cachedItems;
+
+    updateCategoryFilter();
+
+    filterCollectionList();
+
+    const age =
+      getCollectionCacheAgeText();
+
+    count.innerText =
+      "目前共有 " +
+      allItems.length +
+      " 件收藏" +
+      (
+        age
+          ? " ・ 快取 " + age
+          : ""
+      ) +
+      " ・ 更新中…";
+
+  } else {
+
+    count.innerText =
+      "⏳ 載入收藏中...";
+  }
+
 
   const callbackName =
     "listCallback_" +
     Date.now();
 
+
   window[callbackName] =
     function(data) {
 
-     if (!data.success) {
+      if (!data.success) {
 
-  document
-    .getElementById("collectionCount")
-    .innerText =
-    "❌ 無法載入收藏：" +
-    (data.error || "未知錯誤");
+        /*
+          已有快取就繼續讓使用者使用，
+          只提示背景更新失敗。
+        */
+        if (
+          cachedItems
+        ) {
+
+          count.innerText =
+            "目前共有 " +
+            allItems.length +
+            " 件收藏 ・ ⚠️ 更新失敗";
+
+        } else {
+
+          count.innerText =
+            "❌ 無法載入收藏：" +
+            (
+              data.error ||
+              "未知錯誤"
+            );
+        }
 
         cleanup();
 
         return;
       }
 
+
       allItems =
         data.items || [];
+
+
+      writeCollectionCache(
+        allItems
+      );
+
 
       updateCategoryFilter();
 
       filterCollectionList();
 
-      cleanup();
 
+      count.innerText =
+        "目前共有 " +
+        allItems.length +
+        " 件收藏";
+
+
+      cleanup();
     };
 
 
   const script =
-    document.createElement("script");
+    document.createElement(
+      "script"
+    );
 
 
   script.src =
@@ -2230,13 +2435,22 @@ function loadCollectionList() {
   script.onerror =
     function() {
 
-      document
-        .getElementById("collectionCount")
-        .innerText =
-        "❌ 無法連線到收藏資料";
+      if (
+        cachedItems
+      ) {
+
+        count.innerText =
+          "目前共有 " +
+          allItems.length +
+          " 件收藏 ・ ⚠️ 更新失敗";
+
+      } else {
+
+        count.innerText =
+          "❌ 無法連線到收藏資料";
+      }
 
       cleanup();
-
     };
 
 
@@ -2247,17 +2461,19 @@ function loadCollectionList() {
 
   function cleanup() {
 
-    if (script.parentNode) {
+    if (
+      script.parentNode
+    ) {
 
       script.parentNode
-        .removeChild(script);
-
+        .removeChild(
+          script
+        );
     }
 
     delete window[
       callbackName
     ];
-
   }
 
 }
@@ -2977,6 +3193,10 @@ function reloadCollectionAfterEdit(itemId) {
             allItems =
               data.items;
 
+            writeCollectionCache(
+              allItems
+            );
+
             updateCategoryFilter();
 
             filterCollectionList();
@@ -3117,9 +3337,11 @@ async function deleteItem(itemIndex) {
     );
 
 
+    clearCollectionCache();
+
     await new Promise(
       function(resolve) {
-        setTimeout(resolve, 1000);
+        setTimeout(resolve, 700);
       }
     );
 
@@ -3167,6 +3389,10 @@ function reloadCollectionAfterDelete() {
 
             allItems =
               data.items;
+
+            writeCollectionCache(
+              allItems
+            );
 
             updateCategoryFilter();
 
@@ -3298,6 +3524,8 @@ function renderCollectionList(items) {
           <img
             src="${escapeHtml(imageSrc)}"
             alt="收藏圖片"
+            loading="lazy"
+            decoding="async"
           >
         `
         : `
@@ -3636,6 +3864,8 @@ function filterCollectionList() {
 
 
       clearForm();
+
+      clearCollectionCache();
 
       if (collectionLoaded) {
         loadCollectionList();
