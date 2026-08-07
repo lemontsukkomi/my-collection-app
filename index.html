@@ -1,109 +1,445 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>我的收藏 App</title>
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>我的收藏</title>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
+
     body {
       font-family: Arial, sans-serif;
       max-width: 500px;
-      margin: 30px auto;
+      margin: 20px auto;
       padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
     h1 {
       text-align: center;
     }
 
-    button {
-      width: 100%;
-      padding: 15px;
-      font-size: 18px;
-      margin-top: 20px;
+    label {
+      display: block;
+      margin-top: 16px;
+      font-weight: bold;
     }
 
-    input {
+    input,
+    textarea {
+
       width: 100%;
-      padding: 12px;
-      font-size: 18px;
       box-sizing: border-box;
+
+      padding: 12px;
+
+      margin-top: 6px;
+
+      font-size: 16px;
+
+      border: 1px solid #ccc;
+
+      border-radius: 8px;
+    }
+
+    button {
+
+      width: 100%;
+
+      padding: 14px;
+
+      margin-top: 15px;
+
+      font-size: 17px;
+
+      border: none;
+
+      border-radius: 8px;
+
+      cursor: pointer;
+    }
+
+    #scanButton {
+      background: #eeeeee;
+    }
+
+    #saveButton {
+      margin-top: 25px;
     }
 
     #reader {
-      margin-top: 20px;
+      margin-top: 15px;
     }
+
+    #message {
+      margin-top: 20px;
+      text-align: center;
+      font-weight: bold;
+    }
+
   </style>
+
 </head>
+
 
 <body>
 
+<div class="card">
+
   <h1>📦 我的收藏</h1>
 
-  <label>條碼</label>
-  <input id="barcode" type="text" placeholder="掃描後會自動填入">
 
-  <button onclick="startScanner()">
+  <label>條碼</label>
+
+  <input
+    id="barcode"
+    type="text"
+    placeholder="掃描或手動輸入條碼"
+  >
+
+
+  <button
+    id="scanButton"
+    type="button"
+    onclick="startScanner()"
+  >
     📷 掃描條碼
   </button>
 
+
   <div id="reader"></div>
 
-  <script>
 
-let scanner = null;
+  <label>收藏名稱 *</label>
 
-function startScanner() {
+  <input
+    id="name"
+    type="text"
+    placeholder="例如：寶可夢卡盒"
+  >
 
-  if (scanner) {
-    return;
-  }
 
-  scanner = new Html5Qrcode("reader");
+  <label>分類</label>
 
-  scanner.start(
-    { facingMode: "environment" },
+  <input
+    id="category"
+    type="text"
+    placeholder="例如：寶可夢"
+  >
 
-    {
-      fps: 10,
 
-      qrbox: {
-        width: 300,
-        height: 120
-      }
-    },
+  <label>存放位置</label>
 
-    function(decodedText) {
+  <input
+    id="location"
+    type="text"
+    placeholder="例如：防潮箱第一層"
+  >
 
-      document.getElementById("barcode").value = decodedText;
 
-      scanner.stop().then(function() {
-        scanner.clear();
-        scanner = null;
+  <label>數量</label>
 
-        alert("✅ 掃描成功：" + decodedText);
-      });
+  <input
+    id="quantity"
+    type="number"
+    value="1"
+    min="1"
+  >
 
-    },
 
-    function(errorMessage) {
-      // 還沒掃到時不用做事
+  <label>購買日期</label>
+
+  <input
+    id="purchaseDate"
+    type="date"
+  >
+
+
+  <label>購入價格</label>
+
+  <input
+    id="price"
+    type="number"
+    placeholder="例如：500"
+  >
+
+
+  <label>備註</label>
+
+  <textarea
+    id="notes"
+    rows="4"
+    placeholder="其他想記錄的內容"
+  ></textarea>
+
+
+  <button
+    id="saveButton"
+    type="button"
+    onclick="saveItem()"
+  >
+    💾 儲存收藏
+  </button>
+
+
+  <div id="message"></div>
+
+</div>
+
+
+<script>
+
+  /*
+  ==========================================
+  把你的 Apps Script 網址貼在這裡
+  ==========================================
+  */
+
+  const WEB_APP_URL =
+    "https://script.google.com/macros/s/AKfycby6fpsy6FRKllxp2k5yEM0MWsV3ShzvrdE7Ug8kBEIFzMHd8vQmR_lcXbDbFhqZaUde/exec";
+
+
+  /*
+  ==========================================
+  條碼掃描
+  ==========================================
+  */
+
+  let scanner = null;
+
+
+  function startScanner() {
+
+    if (scanner) {
+      return;
     }
 
-  ).catch(function(error) {
 
-    alert("❌ 無法開啟相機：" + error);
+    scanner = new Html5Qrcode("reader");
 
-    scanner = null;
 
-  });
-}
+    scanner.start(
 
-  </script>
+      {
+        facingMode: "environment"
+      },
+
+      {
+
+        fps: 10,
+
+        qrbox: {
+          width: 300,
+          height: 120
+        }
+
+      },
+
+
+      function(decodedText) {
+
+        document.getElementById("barcode").value =
+          decodedText;
+
+
+        scanner.stop().then(function() {
+
+          scanner.clear();
+
+          scanner = null;
+
+        });
+
+      },
+
+
+      function(errorMessage) {
+
+        // 尚未掃描成功時不用顯示任何東西
+
+      }
+
+
+    ).catch(function(error) {
+
+      alert(
+        "無法開啟相機：" + error
+      );
+
+      scanner = null;
+
+    });
+
+  }
+
+
+  /*
+  ==========================================
+  儲存資料
+  ==========================================
+  */
+
+  async function saveItem() {
+
+
+    const name =
+      document.getElementById("name").value.trim();
+
+
+    if (!name) {
+
+      alert("請輸入收藏名稱");
+
+      return;
+
+    }
+
+
+    const data = {
+
+      barcode:
+        document.getElementById("barcode").value.trim(),
+
+      name:
+        name,
+
+      category:
+        document.getElementById("category").value.trim(),
+
+      location:
+        document.getElementById("location").value.trim(),
+
+      quantity:
+        document.getElementById("quantity").value,
+
+      purchaseDate:
+        document.getElementById("purchaseDate").value,
+
+      price:
+        document.getElementById("price").value,
+
+      notes:
+        document.getElementById("notes").value.trim()
+
+    };
+
+
+    const message =
+      document.getElementById("message");
+
+
+    const button =
+      document.getElementById("saveButton");
+
+
+    message.innerText =
+      "⏳ 儲存中...";
+
+
+    button.disabled = true;
+
+
+    try {
+
+
+      await fetch(
+
+        WEB_APP_URL,
+
+        {
+
+          method: "POST",
+
+          mode: "no-cors",
+
+          headers: {
+
+            "Content-Type":
+              "text/plain;charset=utf-8"
+
+          },
+
+          body:
+            JSON.stringify(data)
+
+        }
+
+      );
+
+
+      message.innerText =
+        "✅ 資料已送出！";
+
+
+      clearForm();
+
+
+    } catch (error) {
+
+
+      console.error(error);
+
+
+      message.innerText =
+        "❌ 儲存失敗";
+
+
+    } finally {
+
+
+      button.disabled = false;
+
+    }
+
+  }
+
+
+
+  /*
+  ==========================================
+  儲存成功後清空表單
+  ==========================================
+  */
+
+  function clearForm() {
+
+    document.getElementById("barcode").value = "";
+
+    document.getElementById("name").value = "";
+
+    document.getElementById("category").value = "";
+
+    document.getElementById("location").value = "";
+
+    document.getElementById("quantity").value = 1;
+
+    document.getElementById("purchaseDate").value = "";
+
+    document.getElementById("price").value = "";
+
+    document.getElementById("notes").value = "";
+
+  }
+
+</script>
+
 
 </body>
+
 </html>
