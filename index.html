@@ -741,8 +741,11 @@
     <input
       id="quantity"
       type="number"
+      inputmode="numeric"
+      pattern="[0-9]*"
       value="1"
       min="1"
+      step="1"
     >
 
     <label>本次購買日期</label>
@@ -759,6 +762,9 @@
         <input
           id="price"
           type="number"
+          inputmode="decimal"
+          min="0"
+          step="0.01"
           placeholder="例如：500"
         >
       </div>
@@ -3152,7 +3158,7 @@ function purchaseDetailHtml(item){
 }
 function renderEditPurchaseRecords(){
   const box=document.getElementById("editPurchaseRecords"); if(!box)return;
-  box.innerHTML=editPurchaseRecordsData.map(function(r,index){const options=getAllCurrencies().map(function(c){return `<option value="${escapeHtml(c.code)}" ${c.code===r.currency?"selected":""}>${escapeHtml(currencyLabel(c.code))}</option>`;}).join("");return `<div class="purchase-record"><div class="purchase-record-grid"><div><label>購買日期</label><input type="date" value="${escapeHtml(r.date)}" onchange="updateEditPurchaseRecord(${index},'date',this.value)"></div><div><label>單盒價格</label><input type="number" min="0" step="0.01" value="${escapeHtml(r.price)}" onchange="updateEditPurchaseRecord(${index},'price',this.value)"></div><div><label>幣種</label><select onchange="updateEditPurchaseRecord(${index},'currency',this.value)">${options}</select></div><div><label>數量</label><input type="number" min="1" value="${escapeHtml(r.quantity)}" onchange="updateEditPurchaseRecord(${index},'quantity',this.value)"></div><button type="button" class="purchase-remove" onclick="removeEditPurchaseRecord(${index})">刪除</button></div><input class="purchase-record-note" type="text" placeholder="通路或備註（可不填）" value="${escapeHtml(r.note)}" onchange="updateEditPurchaseRecord(${index},'note',this.value)"></div>`;}).join("");
+  box.innerHTML=editPurchaseRecordsData.map(function(r,index){const options=getAllCurrencies().map(function(c){return `<option value="${escapeHtml(c.code)}" ${c.code===r.currency?"selected":""}>${escapeHtml(currencyLabel(c.code))}</option>`;}).join("");return `<div class="purchase-record"><div class="purchase-record-grid"><div><label>購買日期</label><input type="date" value="${escapeHtml(r.date)}" onchange="updateEditPurchaseRecord(${index},'date',this.value)"></div><div><label>單盒價格</label><input type="number" inputmode="decimal" min="0" step="0.01" value="${escapeHtml(r.price)}" onchange="updateEditPurchaseRecord(${index},'price',this.value)"></div><div><label>幣種</label><select onchange="updateEditPurchaseRecord(${index},'currency',this.value)">${options}</select></div><div><label>數量</label><input type="number" inputmode="numeric" pattern="[0-9]*" min="1" step="1" value="${escapeHtml(r.quantity)}" onchange="updateEditPurchaseRecord(${index},'quantity',this.value)"></div><button type="button" class="purchase-remove" onclick="removeEditPurchaseRecord(${index})">刪除</button></div><input class="purchase-record-note" type="text" placeholder="通路或備註（可不填）" value="${escapeHtml(r.note)}" onchange="updateEditPurchaseRecord(${index},'note',this.value)"></div>`;}).join("");
   const summary=purchaseTotals(editPurchaseRecordsData); const totalText=Object.keys(summary.totals).map(function(code){return formatMoney(summary.totals[code])+" "+currencyLabel(code);}).join(" ＋ ")||"-";
   document.getElementById("editPurchaseSummary").innerHTML=`<strong>總數量：${summary.quantity} 盒</strong><br>總成本：${escapeHtml(totalText)}`;
 }
