@@ -244,57 +244,85 @@
 
 function startScanner() {
 
-  if (scanner) {
-    return;
-  }
+  try {
 
-  scanner = new Html5Qrcode("reader");
+    alert("步驟1：按鈕正常");
 
-  scanner.start(
-
-    {
-      facingMode: "environment"
-    },
-
-    {
-      fps: 10,
-
-      qrbox: {
-        width: 300,
-        height: 120
-      }
-    },
-
-    function(decodedText) {
-
-      document.getElementById("barcode").value = decodedText;
-
-      scanner.stop().then(function() {
-
-        scanner.clear();
-        scanner = null;
-
-        searchBarcode(decodedText);
-
-      });
-
-    },
-
-    function(errorMessage) {
-
-      // 尚未掃描成功時不用顯示任何東西
-
+    if (typeof Html5Qrcode === "undefined") {
+      alert("❌ Html5Qrcode 沒有載入");
+      return;
     }
 
-  ).catch(function(error) {
+    alert("步驟2：掃描函式庫正常");
+
+    if (scanner) {
+      alert("⚠️ 掃描器已經存在");
+      return;
+    }
+
+    scanner = new Html5Qrcode("reader");
+
+    alert("步驟3：掃描器建立成功");
+
+    scanner.start(
+
+      {
+        facingMode: "environment"
+      },
+
+      {
+        fps: 10,
+
+        qrbox: {
+          width: 300,
+          height: 120
+        }
+      },
+
+      function(decodedText) {
+
+        document.getElementById("barcode").value = decodedText;
+
+        scanner.stop().then(function() {
+
+          scanner.clear();
+          scanner = null;
+
+          searchBarcode(decodedText);
+
+        });
+
+      },
+
+      function(errorMessage) {
+        // 尚未辨識到條碼，不處理
+      }
+
+    ).then(function() {
+
+      alert("步驟4：相機啟動成功");
+
+    }).catch(function(error) {
+
+      alert(
+        "❌ scanner.start 發生錯誤：\n\n" +
+        error
+      );
+
+      scanner = null;
+
+    });
+
+  } catch (error) {
 
     alert(
-      "無法開啟相機：" + error
+      "❌ startScanner 發生錯誤：\n\n" +
+      error.message
     );
 
     scanner = null;
 
-  });
+  }
 
 }
 
