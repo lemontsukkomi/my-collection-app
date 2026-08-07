@@ -244,51 +244,54 @@
 
 function startScanner() {
 
+  if (scanner) {
+    return;
+  }
 
-      function(decodedText) {
+  scanner = new Html5Qrcode("reader");
 
-        document.getElementById("barcode").value = decodedText;
+  scanner.start(
 
-        scanner.stop().then(function() {
+    {
+      facingMode: "environment"
+    },
 
-          scanner.clear();
-          scanner = null;
+    {
+      fps: 10,
 
-          searchBarcode(decodedText);
-
-        });
-
-      },
-
-      function(errorMessage) {
-        // 尚未辨識到條碼，不處理
+      qrbox: {
+        width: 300,
+        height: 120
       }
+    },
 
-    ).then(function() {
+    function(decodedText) {
 
-      alert("步驟4：相機啟動成功");
+      document.getElementById("barcode").value = decodedText;
 
-    }).catch(function(error) {
+      scanner.stop().then(function() {
 
-      alert(
-        "❌ scanner.start 發生錯誤：\n\n" +
-        error
-      );
+        scanner.clear();
+        scanner = null;
 
-      scanner = null;
+        // 掃描完成後自動搜尋
+        searchBarcode(decodedText);
 
-    });
+      });
 
-  } catch (error) {
+    },
 
-    alert(
-      "❌ startScanner 發生錯誤：\n\n" +
-      error.message
-    );
+    function(errorMessage) {
+      // 尚未辨識到條碼時，不顯示任何訊息
+    }
+
+  ).catch(function(error) {
+
+    alert("無法開啟相機：" + error);
 
     scanner = null;
 
-  }
+  });
 
 }
 
