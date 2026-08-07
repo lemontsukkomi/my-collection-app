@@ -592,10 +592,44 @@
         const item =
           data.item;
 
-        const imageHtml =
-          item.imageUrl
-            ? `<img src="${item.imageUrl}" alt="收藏圖片">`
-            : "";
+let imageHtml = "";
+
+if (item.imageUrl) {
+
+  let imageSrc = item.imageUrl;
+
+  // 如果是 Google Drive 圖片網址，抓出 File ID
+  const idMatch =
+    item.imageUrl.match(
+      /(?:id=|\/d\/)([a-zA-Z0-9_-]+)/
+    );
+
+  if (idMatch) {
+
+    const fileId =
+      idMatch[1];
+
+    imageSrc =
+      "https://drive.google.com/thumbnail?id=" +
+      fileId +
+      "&sz=w1000";
+
+  }
+
+  imageHtml = `
+    <img
+      src="${imageSrc}"
+      alt="收藏圖片"
+      style="
+        width:100%;
+        max-height:240px;
+        object-fit:contain;
+        border-radius:10px;
+        margin-bottom:12px;
+      "
+    >
+  `;
+}
 
         resultBox.innerHTML = `
           ${imageHtml}
