@@ -320,18 +320,12 @@
 
     /* iPhone 日期欄避免超出卡片 */
     input[type="date"] {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-
-  -webkit-appearance: none;
-  appearance: none;
-
-  height: 46px;
-  padding: 10px 12px;
-}
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
 
     /* 分類篩選 */
     .collection-filter-row {
@@ -574,6 +568,16 @@
       margin-top: 8px;
       font-size: 13px;
       color: #777;
+    }
+
+
+    .force-sync-button {
+      margin-top: 0;
+      margin-bottom: 12px;
+      background: #eeeeee;
+      font-size: 15px;
+      padding: 11px 12px;
+      font-weight: bold;
     }
 
   </style>
@@ -855,6 +859,14 @@
     >
       尚未載入收藏
     </div>
+
+    <button
+      type="button"
+      class="force-sync-button"
+      onclick="forceSyncCollection()"
+    >
+      🔄 強制同步
+    </button>
 
     <input
       id="textSearch"
@@ -2961,6 +2973,115 @@ function loadCollectionList() {
   }
 
 }
+
+
+
+function forceSyncCollection() {
+
+  const count =
+    document.getElementById(
+      "collectionCount"
+    );
+
+  clearCollectionCache();
+
+  count.innerText =
+    "⏳ 強制同步中...";
+
+
+  const callbackName =
+    "forceSyncCallback_" +
+    Date.now();
+
+
+  window[callbackName] =
+    function(data) {
+
+      if (
+        data.success &&
+        Array.isArray(
+          data.items
+        )
+      ) {
+
+        allItems =
+          data.items;
+
+        writeCollectionCache(
+          allItems
+        );
+
+        updateCategoryFilter();
+
+        filterCollectionList();
+
+        count.innerText =
+          "目前共有 " +
+          allItems.length +
+          " 件收藏";
+
+      } else {
+
+        count.innerText =
+          "❌ 強制同步失敗：" +
+          (
+            data.error ||
+            "未知錯誤"
+          );
+      }
+
+      cleanup();
+    };
+
+
+  const script =
+    document.createElement(
+      "script"
+    );
+
+  script.src =
+    WEB_APP_URL +
+    "?action=forceRefresh" +
+    "&callback=" +
+    encodeURIComponent(
+      callbackName
+    ) +
+    "&t=" +
+    Date.now();
+
+
+  script.onerror =
+    function() {
+
+      count.innerText =
+        "❌ 強制同步失敗";
+
+      cleanup();
+    };
+
+
+  document.body.appendChild(
+    script
+  );
+
+
+  function cleanup() {
+
+    if (
+      script.parentNode
+    ) {
+      script.parentNode
+        .removeChild(
+          script
+        );
+    }
+
+    delete window[
+      callbackName
+    ];
+  }
+}
+
 
 
 function getDisplayImageUrl(imageUrl, size) {
