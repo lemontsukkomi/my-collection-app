@@ -302,6 +302,65 @@
       font-weight: bold;
     }
 
+
+    /* 條碼按鈕同一排 */
+    .barcode-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .barcode-actions button {
+      flex: 1;
+      width: auto;
+      margin-top: 0;
+      padding: 13px 10px;
+      font-size: 16px;
+    }
+
+    /* iPhone 日期欄避免超出卡片 */
+    input[type="date"] {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+
+    /* 分類篩選 */
+    .collection-filter-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+
+    .collection-filter-row select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+    }
+
+    .delete-button {
+      background: #f3f3f3;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .detail-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .detail-actions button {
+      margin-top: 0;
+    }
+
   </style>
 </head>
 
@@ -363,22 +422,26 @@
       placeholder="掃描或手動輸入條碼"
     >
 
-    <button
-      type="button"
-      onclick="searchBarcode(
-        document.getElementById('barcode').value
-      )"
-    >
-      🔍 搜尋條碼
-    </button>
+    <div class="barcode-actions">
 
-    <button
-      id="scanButton"
-      type="button"
-      onclick="startScanner()"
-    >
-      📷 掃描條碼
-    </button>
+      <button
+        type="button"
+        onclick="searchBarcode(
+          document.getElementById('barcode').value
+        )"
+      >
+        🔍 搜尋條碼
+      </button>
+
+      <button
+        id="scanButton"
+        type="button"
+        onclick="startScanner()"
+      >
+        📷 掃描條碼
+      </button>
+
+    </div>
 
     <div id="reader"></div>
 
@@ -485,6 +548,15 @@
       placeholder="搜尋名稱、分類、位置、備註..."
       oninput="filterCollectionList()"
     >
+
+    <div class="collection-filter-row">
+      <select
+        id="categoryFilter"
+        onchange="filterCollectionList()"
+      >
+        <option value="">全部分類</option>
+      </select>
+    </div>
 
     <div
       id="collectionList"
@@ -1170,9 +1242,9 @@ function loadCollectionList() {
       allItems =
         data.items || [];
 
-      renderCollectionList(
-        allItems
-      );
+      updateCategoryFilter();
+
+      filterCollectionList();
 
       cleanup();
 
@@ -1416,6 +1488,7 @@ function showItemDetail(itemIndex) {
       </div>
 
       <div class="detail-actions">
+
         <button
           type="button"
           class="edit-button"
@@ -1423,6 +1496,15 @@ function showItemDetail(itemIndex) {
         >
           ✏️ 編輯收藏
         </button>
+
+        <button
+          type="button"
+          class="delete-button"
+          onclick="deleteItem(${itemIndex})"
+        >
+          🗑️ 刪除收藏
+        </button>
+
       </div>
     `;
 
@@ -1953,6 +2035,180 @@ function reloadCollectionAfterEdit(itemId) {
 }
 
 
+
+async function deleteItem(itemIndex) {
+
+  const item =
+    allItems[itemIndex];
+
+  if (!item) {
+    return;
+  }
+
+  const confirmed =
+    confirm(
+      "確定要刪除「" +
+      (item.name || "未命名收藏") +
+      "」嗎？\n\n這會同時刪除 Google Sheets 裡的資料。"
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  const secondConfirmed =
+    confirm(
+      "真的要刪除嗎？這個動作無法在 App 內復原。"
+    );
+
+  if (!secondConfirmed) {
+    return;
+  }
+
+
+  const data = {
+    action: "delete",
+    id: item.id
+  };
+
+
+  try {
+
+    await fetch(
+      WEB_APP_URL,
+      {
+        method: "POST",
+
+        mode: "no-cors",
+
+        headers: {
+          "Content-Type":
+            "text/plain;charset=utf-8"
+        },
+
+        body:
+          JSON.stringify(data)
+      }
+    );
+
+
+    await new Promise(
+      function(resolve) {
+        setTimeout(resolve, 1000);
+      }
+    );
+
+
+    document
+      .getElementById("detailPage")
+      .classList.remove("active");
+
+    document
+      .getElementById("collectionPage")
+      .classList.add("active");
+
+
+    await reloadCollectionAfterDelete();
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert(
+      "刪除失敗，請稍後再試。"
+    );
+
+  }
+}
+
+
+function reloadCollectionAfterDelete() {
+
+  return new Promise(
+    function(resolve) {
+
+      const callbackName =
+        "deleteReloadCallback_" +
+        Date.now();
+
+      window[callbackName] =
+        function(data) {
+
+          if (
+            data.success &&
+            Array.isArray(data.items)
+          ) {
+
+            allItems =
+              data.items;
+
+            updateCategoryFilter();
+
+            filterCollectionList();
+
+          } else {
+
+            alert(
+              "刪除可能已完成，但重新載入收藏失敗。"
+            );
+
+          }
+
+          cleanup();
+          resolve();
+        };
+
+
+      const script =
+        document.createElement(
+          "script"
+        );
+
+      script.src =
+        WEB_APP_URL +
+        "?action=list" +
+        "&callback=" +
+        encodeURIComponent(
+          callbackName
+        ) +
+        "&t=" +
+        Date.now();
+
+      script.onerror =
+        function() {
+
+          cleanup();
+          resolve();
+
+          alert(
+            "刪除可能已完成，但重新載入收藏失敗，請重新整理頁面。"
+          );
+        };
+
+      document.body.appendChild(
+        script
+      );
+
+
+      function cleanup() {
+
+        if (script.parentNode) {
+          script.parentNode
+            .removeChild(script);
+        }
+
+        delete window[
+          callbackName
+        ];
+      }
+
+    }
+  );
+}
+
+
 function backToCollection() {
 
   document
@@ -2089,6 +2345,67 @@ function renderCollectionList(items) {
     html;
 }
 
+
+function updateCategoryFilter() {
+
+  const select =
+    document.getElementById(
+      "categoryFilter"
+    );
+
+  if (!select) {
+    return;
+  }
+
+  const currentValue =
+    select.value;
+
+  const categories =
+    Array.from(
+      new Set(
+        allItems
+          .map(function(item) {
+            return String(
+              item.category || ""
+            ).trim();
+          })
+          .filter(Boolean)
+      )
+    )
+      .sort(function(a, b) {
+        return a.localeCompare(
+          b,
+          "zh-Hant"
+        );
+      });
+
+
+  select.innerHTML =
+    '<option value="">全部分類</option>' +
+    categories
+      .map(function(category) {
+        return (
+          '<option value="' +
+          escapeHtml(category) +
+          '">' +
+          escapeHtml(category) +
+          '</option>'
+        );
+      })
+      .join("");
+
+
+  if (
+    categories.includes(
+      currentValue
+    )
+  ) {
+    select.value =
+      currentValue;
+  }
+}
+
+
 function filterCollectionList() {
 
   const keyword =
@@ -2100,21 +2417,40 @@ function filterCollectionList() {
       .trim()
       .toLowerCase();
 
-
-  if (!keyword) {
-
-    renderCollectionList(
-      allItems
-    );
-
-    return;
-
-  }
+  const category =
+    document
+      .getElementById(
+        "categoryFilter"
+      )
+      .value
+      .trim()
+      .toLowerCase();
 
 
   const filtered =
     allItems.filter(
       function(item) {
+
+        const itemCategory =
+          String(
+            item.category || ""
+          )
+            .trim()
+            .toLowerCase();
+
+        const categoryMatch =
+          !category ||
+          itemCategory === category;
+
+        if (!categoryMatch) {
+          return false;
+        }
+
+
+        if (!keyword) {
+          return true;
+        }
+
 
         const text = [
           item.name,
@@ -2140,7 +2476,7 @@ function filterCollectionList() {
   );
 
 }
-  
+
   async function saveItem() {
 
     const name =
