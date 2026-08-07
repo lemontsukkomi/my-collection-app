@@ -3186,11 +3186,29 @@ function showItemDetail(itemIndex) {
   const imageHtml =
     imageSrc
       ? `
-        <img
-          class="detail-image"
-          src="${escapeHtml(imageSrc)}"
-          alt="收藏圖片"
+        <button
+          type="button"
+          class="detail-gallery-button"
+          style="
+            width:100%;
+            display:block;
+            margin:0 0 18px 0;
+          "
+          data-full-url="${escapeHtml(
+            getDisplayImageUrl(
+              item.imageUrl,
+              1800
+            )
+          )}"
+          onclick="openImageLightbox(this.dataset.fullUrl)"
         >
+          <img
+            class="detail-image"
+            src="${escapeHtml(imageSrc)}"
+            alt="收藏封面圖片"
+            style="margin-bottom:0;"
+          >
+        </button>
       `
       : `
         <div
