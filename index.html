@@ -112,6 +112,16 @@
     type="text"
     placeholder="掃描或手動輸入條碼"
   >
+  <button
+  type="button"
+  onclick="
+    searchBarcode(
+      document.getElementById('barcode').value
+    )
+  "
+>
+  🔍 搜尋條碼
+</button>
 
 
   <button
@@ -124,7 +134,15 @@
 
 
   <div id="reader"></div>
-
+<div
+  id="searchResult"
+  style="
+    margin-top:15px;
+    padding:15px;
+    border-radius:10px;
+    display:none;
+  "
+></div>
 
   <label>收藏名稱 *</label>
 
@@ -254,20 +272,98 @@
 
       function(decodedText) {
 
-        document.getElementById("barcode").value =
-          decodedText;
+  document.getElementById("barcode").value = decodedText;
+
+  scanner.stop().then(function() {
+
+    scanner.clear();
+    scanner = null;
+
+    searchBarcode(decodedText);
+
+  });
+
+},
+async function searchBarcode(barcode) {
+
+  const resultBox =
+    document.getElementById("searchResult");
+
+  resultBox.style.display = "block";
+  resultBox.innerHTML = "🔍 查詢中...";
 
 
-        scanner.stop().then(function() {
+  try {
 
-          scanner.clear();
+    const url =
+      WEB_APP_URL +
+      "?barcode=" +
+      encodeURIComponent(barcode);
 
-          scanner = null;
 
-        });
+    const response =
+      await fetch(url);
 
-      },
 
+    const data =
+      await response.json();
+
+
+    if (!data.success) {
+
+      resultBox.innerHTML =
+        "❌ 查詢失敗：" + data.error;
+
+      return;
+
+    }
+
+
+    if (!data.found) {
+
+      resultBox.innerHTML = `
+        <strong>🆕 尚未建立這個商品</strong><br><br>
+        條碼：${barcode}<br>
+        可以直接在下面填寫資料新增收藏。
+      `;
+
+      return;
+
+    }
+
+
+    const item = data.item;
+
+
+    resultBox.innerHTML = `
+      <strong>✅ 已找到收藏</strong>
+
+      <hr>
+
+      <strong>${item.name || "未命名"}</strong><br><br>
+
+      分類：${item.category || "-"}<br>
+
+      📍 位置：${item.location || "-"}<br>
+
+      數量：${item.quantity || 1}<br>
+
+      💰 價格：${item.price || "-"}<br>
+
+      備註：${item.notes || "-"}
+    `;
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    resultBox.innerHTML =
+      "❌ 無法查詢資料";
+
+  }
+
+}
 
       function(errorMessage) {
 
